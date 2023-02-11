@@ -360,6 +360,8 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
         `ChatGPT "${this._email}" resetSession error`,
         err.toString()
       )
+      // 抛出异常
+      throw err
     }
   }
 
@@ -382,18 +384,16 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
       await this._page.reload()
 
       let response
-      const timeout = 120000 // 2 minutes in milliseconds
+      const timeout = 5000
 
       try {
         // Wait for a response that includes the 'cf_clearance' cookie
         response = await this._page.waitForResponse(
           (response) => {
-            const cookie = response.headers()['set-cookie']
-            if (cookie?.includes('cf_clearance=')) {
-              const cfClearance = cookie
-                .split('cf_clearance=')?.[1]
-                ?.split(';')?.[0]
-              // console.log('Cloudflare Cookie:', cfClearance)
+            if (
+              response.url().endsWith('api/auth/session') &&
+              response.status() === 200
+            ) {
               return true
             }
             return false
