@@ -1,6 +1,7 @@
 import { ChatGPTAPIBrowser, ChatGPTError, ChatGPTPool, AccountInfo, ErrorCodeEnums } from "../../build/index.js";
 import express from "express";
 import os from "os";
+import { logger } from "./logConfig.js";
 
 const successCode = 200;
 const app = express();
@@ -8,17 +9,21 @@ app.use(express.json()); // 启用request的json解析能力
 
 const clientPool = new ChatGPTPool();
 function sendError(res, msg, statusCode = ErrorCodeEnums[999].code) {
-  res.send({
+  const respBody = {
     code: statusCode,
     errMsg: msg
-  });
+  };
+  logger.info(respBody);
+  res.send(respBody);
 }
 
-function sendSuccess(res, obj = {}) {
-  res.send({
+function sendSuccess(res, optionalParams = {}) {
+  const respBody = {
     code: successCode,
-    ...obj
-  });
+    ...optionalParams
+  };
+  logger.info(respBody);
+  res.send(respBody);
 }
 
 function getStateFulProxyInfo(email, proxyServer) {
@@ -83,7 +88,8 @@ function transfer2ErrInfo(err) {
 function handleErr(resp, err) {
   console.error(err);
   if (err instanceof ChatGPTError) {
-    sendError(resp, err.statusText, err.statusCode);
+    const errMsg = err.statusText ? err.statusText : err.message;
+    sendError(resp, errMsg, err.statusCode);
   } else {
     const errInfo = transfer2ErrInfo(err);
     sendError(resp, errInfo.msg, errInfo.code);
