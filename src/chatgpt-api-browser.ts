@@ -1,3 +1,4 @@
+import AsyncRetry from 'async-retry'
 import delay from 'delay'
 import type { Browser, HTTPRequest, HTTPResponse, Page } from 'puppeteer'
 import { temporaryDirectory } from 'tempy'
@@ -426,6 +427,16 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
 
   async getIsAuthenticated() {
     try {
+      // 重试，避免网络慢导致等不到accessToken就返回
+      await AsyncRetry(
+        async () => {
+          if (this._accessToken) {
+            return
+          }
+          await delay(300)
+        },
+        { retries: 3 }
+      )
       if (!this._accessToken) {
         return false
       }
