@@ -350,9 +350,7 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
   async resetSession() {
     console.log(`ChatGPT "${this._email}" resetSession...`)
     try {
-      console.log('>>> closing session', this._email)
       await this.closeSession()
-      console.log('<<< closing session', this._email)
       await deleteFolderRecursive(this._userDataDir)
       await this.initSession()
       console.log(`ChatGPT "${this._email}" refreshSession success`)
@@ -598,6 +596,7 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
 
   override async closeSession() {
     try {
+      console.log(`start closing session ${this._email}`)
       if (this._page) {
         this._page.off('request', this._onRequest.bind(this))
         this._page.off('response', this._onResponse.bind(this))
@@ -615,7 +614,7 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
         await this._page.close()
       }
     } catch (err) {
-      console.warn('closeSession error', err)
+      console.warn(`closeSession error ${this._email}`, err)
     }
 
     if (this._browser) {
@@ -625,7 +624,7 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
           await page.close()
         }
       } catch (err) {
-        console.warn('closeSession error', err)
+        console.warn(`closeSession error ${this._email}`, err)
       }
 
       await this._browser.close()
@@ -635,6 +634,7 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
       if (browserProcess) {
         browserProcess.kill('SIGKILL')
       }
+      console.log(`closing session success ${this._email}`)
     }
 
     this._page = null

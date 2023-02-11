@@ -1,16 +1,13 @@
-import { ChatGPTAPIBrowser,ChatGPTError } from "../../build/index.js";
+import { ChatGPTAPIBrowser, ChatGPTError, ChatGPTPool, AccountInfo, ErrorCodeEnums } from "../../build/index.js";
 import express from "express";
-import ip from "ip";
 import os from "os";
 
-const ipAdress = ip.address();
 const successCode = 200;
-const defaultErrCode = 999;
 const app = express();
 app.use(express.json()); // 启用request的json解析能力
 
-const apiMap = {};
-function sendError(res, msg, statusCode = defaultErrCode) {
+const clientPool = new ChatGPTPool();
+function sendError(res, msg, statusCode = ErrorCodeEnums[999].code) {
   res.send({
     code: statusCode,
     errMsg: msg
@@ -24,11 +21,11 @@ function sendSuccess(res, obj = {}) {
   });
 }
 
-function getStateFulProxyInfo(proxyServer) {
+function getStateFulProxyInfo(email, proxyServer) {
   if (proxyServer && proxyServer.includes('@')) {
     try {
       let proxyUsername = proxyServer.split('@')[0].split(':')[0];
-      let newProxyUsername = proxyUsername + "-country-us-session-" + ipAdress;
+      let newProxyUsername = proxyUsername + "-country-us-ip-205.237.95.120";
       let result = proxyServer.replace(proxyUsername, newProxyUsername);
       console.log('proxy server info:' + result);
       return result;
@@ -62,46 +59,84 @@ function validate(checkParamArr, request, response) {
   return true;
 }
 
+function buildAccountInfo(email, password, proxyInfo, nopechaKey) {
+  const result = new AccountInfo();
+  result.email = email;
+  result.password = password;
+  result.proxyInfo = proxyInfo;
+  result.nopechaKey = nopechaKey;
+  return result;
+}
+
+function transfer2ErrInfo(err) {
+  let errInfo = { "code": ErrorCodeEnums[999].code, "msg": ErrorCodeEnums[999].msg+err.message };
+  for (const item of Object.values(ErrorCodeEnums)) {
+    if (err.message.includes(item.code)) {
+      errInfo.code = item.code;
+      errInfo.msg = item.msg + err.message;
+      return errInfo;
+    }
+  }
+  return errInfo;
+}
+
+function handleErr(resp, err) {
+  console.error(err);
+  if (err instanceof ChatGPTError) {
+    sendError(resp, err.statusText, err.statusCode);
+  } else {
+    const errInfo = transfer2ErrInfo(err);
+    sendError(resp, errInfo.msg, errInfo.code);
+  }
+}
+
+
 app.get("/vi/health", async (req, res) => {
   sendSuccess(res);
 });
 
+
 app.post("/initSession", async (req, res) => {
-  
   try {
     let validateRs = validate(["email", "password", "proxyServer"], req, res);
     if (!validateRs) {
       return;
     }
-    const api = new ChatGPTAPIBrowser({
+    if (clientPool.getBroswerClient()) {
+      await clientPool.getBroswerClient().closeSession();
+      clientPool.deleteClient(req.body.email);
+    }
+    const stateFullProxyInfo = getStateFulProxyInfo(req.body.email, req.body.proxyServer);
+    const browser = new ChatGPTAPIBrowser({
       email: req.body.email,
       password: req.body.password,
       //nopechaKey: req.body.nocaptchaToken,
-      proxyServer: getStateFulProxyInfo(req.body.proxyServer),
+      proxyServer: stateFullProxyInfo,
       // executablePath: getBrowserExecutePath(),
       debug: true,
       minimize: false
     });
-    await api.initSession();
+    await browser.initSession();
+    clientPool.addClient(
+      buildAccountInfo(req.body.email, req.body.password, req.body.email, stateFullProxyInfo),
+      browser
+    );
     sendSuccess(res);
-  } catch (e) {
-    console.error(e);
-    sendError(res, "started failed: " + e.message);
+  } catch (err) {
+    handleErr(res, err);
   }
 });
 
 app.post("/ask", async (req, res) => {
-  const checkArr = ["question", "email"];
-  for (const item of checkArr) {
-    if (!req.body[item]) {
-      return sendError(res, `need req.${item}`);
-    }
-  }
+
   try {
-    const email = req.body.email;
-    const api = apiMap[email];
-    if (!api) {
-      return sendError(res, "no user email, need login");
+    let validateRs = validate(["question", "email"], req, res);
+    if (!validateRs) {
+      return;
+    }
+    const browser = clientPool.getBroswerClient(req.body.email);
+    if (!browser) {
+      return sendError(res, ErrorCodeEnums[401].msg, ErrorCodeEnums[401].code);
     }
     const messageParams = {
       ...(req.body.conversationId && {
@@ -109,59 +144,68 @@ app.post("/ask", async (req, res) => {
       }),
       ...(req.body.parentMsgId && { parentMessageId: req.body.parentMsgId })
     };
-    const result = await api.sendMessage(req.body.question, messageParams);
+    const result = await browser.sendMessage(req.body.question, messageParams);
     sendSuccess(res, {
       ...(result.messageId && { msgId: result.messageId }),
       ...(result.conversationId && { conversationId: result.conversationId }),
       answer: result.response
     });
-  } catch (e) {
-    console.error(e);
-    if (e instanceof ChatGPTError) {
-      sendError(res, e.statusText, e.statusCode);
-    } else {
-      sendError(res, "unknown error occurred. " + e.message);
-    }
+  } catch (err) {
+    handleErr(res, err);
   }
 });
 
 app.post("/refreshSession", async (req, res) => {
-  const email = req.body.email;
-  if (!email) {
-    return sendError(res, "need emil");
-  }
-  const api = apiMap[email];
-  if (!api) {
-    return sendError(res, "no user email, need login");
-  }
   try {
-    await api.refreshSession();
+    let validateRs = validate(["email"], req, res);
+    if (!validateRs) {
+      return;
+    }
+    const browser = clientPool.getBroswerClient(req.body.email);
+    if (!browser) {
+      return sendError(res, ErrorCodeEnums[401].msg, ErrorCodeEnums[401].code);
+    }
+    await browser.refreshSession();
     sendSuccess(res);
-  } catch (e) {
-    console.error(e);
-    delete apiMap[email];
-    sendError(res, "unknown error occurred.");
+  } catch (err) {
+    clientPool.deleteClient(req.body.email);
+    handleErr(res, err);
   }
 });
 
 
 app.post("/closeSession", async (req, res) => {
-  const email = req.body.email;
-  if (!email) {
-    return sendError(res, "need emil");
-  }
-  const api = apiMap[email];
-  if (!api) {
-    return sendSuccess(res);
-  }
   try {
-    await api.closeSession();
+    let validateRs = validate(["email"], req, res);
+    if (!validateRs) {
+      return;
+    }
+    const browser = clientPool.getBroswerClient(req.body.email);
+    if (!browser) {
+      sendSuccess(res);
+    }
+    await browser.closeSession();
+    clientPool.deleteClient(req.body.email);
     sendSuccess(res);
-  } catch (e) {
-    console.error(e);
-    sendError(res, "Error occurred!" + e.message);
-  } finally {
-    delete apiMap[email];
+  } catch (err) {
+    handleErr(res, err);
+  }
+});
+
+app.post("/resetSession", async (req, res) => {
+  try {
+    let validateRs = validate(["email"], req, res);
+    if (!validateRs) {
+      return;
+    }
+    const browser = clientPool.getBroswerClient(req.body.email);
+    if (!browser) {
+      return sendError(res, ErrorCodeEnums[401].msg, ErrorCodeEnums[401].code);
+    }
+    await browser.resetSession();
+    sendSuccess(res);
+  } catch (err) {
+    handleErr(res, err);
   }
 });
 

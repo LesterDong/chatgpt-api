@@ -204,15 +204,24 @@ export async function getOpenAIAuth({
 
         await delay(2000)
         const frame = page.mainFrame()
-        const submit = await page.waitForSelector('button[type="submit"]', {
-          timeout: timeoutMs
-        })
+        const verifyEmailContinueBt = await page.waitForSelector(
+          'button[type="submit"]',
+          {
+            timeout: timeoutMs
+          }
+        )
         await frame.focus('button[type="submit"]')
-        await submit.focus()
-        await submit.click()
+        await verifyEmailContinueBt.focus()
+        await verifyEmailContinueBt.click()
         await page.waitForSelector('#password', { timeout: timeoutMs })
         await page.type('#password', password)
-        await delay(50)
+        // fix: No element found for selector: button[type="submit"]
+        const verifyAccountContinueBt = await page.waitForSelector(
+          'button[type="submit"]',
+          {
+            timeout: timeoutMs
+          }
+        )
         submitP = () => page.click('button[type="submit"]')
       }
 

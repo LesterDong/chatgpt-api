@@ -1,3 +1,5 @@
+import { ChatGPTAPIBrowser } from './chatgpt-api-browser'
+
 export type ContentType = 'text'
 
 export type Role = 'user' | 'assistant'
@@ -307,4 +309,16 @@ export type ChatResponse = {
   response: string
   conversationId: string
   messageId: string
+}
+
+export class AccountInfo {
+  password: string
+  email: string
+  proxyInfo: string
+  nopechaKey: String
+}
+
+export class ChatGPTClient {
+  browser: ChatGPTAPIBrowser
+  account: AccountInfo
 }
