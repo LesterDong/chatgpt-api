@@ -43,7 +43,6 @@
     "express": "^4.18.2",
     "html-to-md": "^0.8.3",
     "ip": "^1.1.8",
-    "log4js": "^6.7.1",
     "p-timeout": "^6.0.0",
     "puppeteer-extra": "^3.3.4",
     "puppeteer-extra-plugin-recaptcha": "npm:@fisch0920/puppeteer-extra-plugin-recaptcha@^3.6.6",
