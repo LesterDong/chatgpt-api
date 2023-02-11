@@ -24,6 +24,7 @@ async function main() {
   })
   await api.initSession()
 
+  
   const prompt =
     'Write a python version of bubble sort. Do not include example usage.'
 
