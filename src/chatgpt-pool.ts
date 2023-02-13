@@ -32,4 +32,9 @@ export class ChatGPTPool {
     }
     return this.clientPool.get(email).account
   }
+  logPoolAccountInfo() {
+    this.clientPool.forEach((value, key) => {
+      console.log(`email[${key}] active...`)
+    })
+  }
 }
