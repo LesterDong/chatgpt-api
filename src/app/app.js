@@ -30,7 +30,7 @@ function getStateFulProxyInfo(email, proxyServer) {
   if (proxyServer && proxyServer.includes('@')) {
     try {
       let proxyUsername = proxyServer.split('@')[0].split(':')[0];
-      let newProxyUsername = proxyUsername + "-country-us-ip-205.237.95.120";
+      let newProxyUsername = proxyUsername + "-country-us-ip-205.237.95.60";
       let result = proxyServer.replace(proxyUsername, newProxyUsername);
       console.log('proxy server info:' + result);
       return result;
@@ -209,6 +209,24 @@ app.post("/resetSession", async (req, res) => {
       return sendError(res, ErrorCodeEnums[401].msg, ErrorCodeEnums[401].code);
     }
     await browser.resetSession();
+    sendSuccess(res);
+  } catch (err) {
+    handleErr(res, err);
+  }
+});
+
+
+app.post("/clearConversations", async (req, res) => {
+  try {
+    let validateRs = validate(["email"], req, res);
+    if (!validateRs) {
+      return;
+    }
+    const browser = clientPool.getBroswerClient(req.body.email);
+    if (!browser) {
+      return sendError(res, ErrorCodeEnums[401].msg, ErrorCodeEnums[401].code);
+    }
+    await browser.clearConversations();
     sendSuccess(res);
   } catch (err) {
     handleErr(res, err);

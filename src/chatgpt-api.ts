@@ -470,4 +470,8 @@ export class ChatGPTAPI extends AChatGPTAPI {
   override async closeSession(): Promise<void> {
     this._accessTokenCache.delete(KEY_ACCESS_TOKEN)
   }
+
+  override async clearConversations(): Promise<void> {
+    throw new Error('Method not implemented.')
+  }
 }

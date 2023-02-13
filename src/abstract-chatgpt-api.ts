@@ -67,4 +67,11 @@ export abstract class AChatGPTAPI {
    * @throws An error if it fails.
    */
   abstract closeSession(): Promise<void>
+
+  /**
+   * Clear conversations.
+   *
+   * @throws An error if it fails.
+   */
+  abstract clearConversations(): Promise<void>
 }

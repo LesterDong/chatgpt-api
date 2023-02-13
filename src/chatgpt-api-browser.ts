@@ -248,7 +248,6 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
 
       throw new types.ChatGPTError('Failed to authenticate session')
     }
-
     if (this._minimize) {
       return minimizePage(this._page)
     }
@@ -640,6 +639,44 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
     this._page = null
     this._browser = null
     this._accessToken = null
+  }
+
+  override async clearConversations() {
+    try {
+      console.log(`start clear conversations ${this._email}`)
+      if (this._page) {
+        const clearConversationsAtag = await this.getATagByContentText(
+          'Clear conversations'
+        )
+        if (clearConversationsAtag) {
+          await clearConversationsAtag.click()
+          delay(200)
+          const confirmClearConversationsAtag = await this.getATagByContentText(
+            'Confirm clear conversations'
+          )
+          if (confirmClearConversationsAtag) {
+            await confirmClearConversationsAtag.click()
+            console.log('clear conversations success')
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`clear conversations error ${this._email}`, err)
+      throw err
+    }
+  }
+
+  protected async getATagByContentText(contentText: string): Promise<any> {
+    const elements = await this._page.$$('a')
+    for (let index = 0; index < elements.length; index++) {
+      const innerText = await this._page.evaluate(
+        (element) => element.textContent,
+        elements[index]
+      )
+      if (innerText === contentText) {
+        return elements[index]
+      }
+    }
   }
 
   protected async _getInputBox() {
