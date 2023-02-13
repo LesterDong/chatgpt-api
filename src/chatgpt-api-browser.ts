@@ -381,12 +381,12 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
 
       await this._page.reload()
 
-      let response
+      let isOnline
       const timeout = 5000
 
       try {
         // Wait for a response that includes the 'cf_clearance' cookie
-        response = await this._page.waitForResponse(
+        isOnline = await this._page.waitForResponse(
           (response) => {
             if (
               response.url().endsWith('api/auth/session') &&
@@ -400,10 +400,10 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
         )
       } catch (err) {
         // Useful for when cloudflare cookie is still valid, to catch TimeoutError
-        response = !!(await this._getInputBox())
+        isOnline = !!(await this._getInputBox())
       }
 
-      if (!response) {
+      if (!isOnline) {
         throw new types.ChatGPTError('Could not fetch cf_clearance cookie')
       }
 
@@ -412,6 +412,7 @@ export class ChatGPTAPIBrowser extends AChatGPTAPI {
       }
 
       console.log(`ChatGPT "${this._email}" refreshSession success`)
+      return true
     } catch (err) {
       console.error(
         `ChatGPT "${this._email}" error refreshing session`,
