@@ -13,6 +13,16 @@
             ],
             "program": "${workspaceRoot}/src/app/app.js",
             "runtimeExecutable": "/Users/donggang/.nvm/versions/node/v18.13.0/bin/ts-node"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "test",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceRoot}/src/app/test.js",
+            "runtimeExecutable": "/Users/donggang/.nvm/versions/node/v18.13.0/bin/ts-node"
         }
     ]
 }

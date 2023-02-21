@@ -104,7 +104,7 @@ app.get("/vi/health", async (req, res) => {
 
 app.post("/initSession", async (req, res) => {
   try {
-    let validateRs = validate(["email", "password", "proxyServer"], req, res);
+    let validateRs = validate(["email", "password"], req, res);
     if (!validateRs) {
       return;
     }
@@ -117,7 +117,7 @@ app.post("/initSession", async (req, res) => {
       email: req.body.email,
       password: req.body.password,
       //nopechaKey: req.body.nocaptchaToken,
-      proxyServer: stateFullProxyInfo,
+      // proxyServer: stateFullProxyInfo,
       // executablePath: getBrowserExecutePath(),
       debug: true,
       minimize: false
